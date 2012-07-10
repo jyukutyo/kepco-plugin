@@ -1,12 +1,4 @@
-package org.jenkinsci.plugins.tepco;
-
-import static java.util.regex.Pattern.compile;
-import hudson.Extension;
-import hudson.Plugin;
-import hudson.PluginWrapper;
-import hudson.model.PeriodicWork;
-import hudson.model.Hudson;
-import hudson.widgets.Widget;
+package org.jenkinsci.plugins.kepco;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,14 +12,22 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import hudson.Extension;
+import hudson.model.Hudson;
+import hudson.model.PeriodicWork;
+import hudson.widgets.Widget;
 import org.apache.commons.io.IOUtils;
 
+import static java.util.regex.Pattern.compile;
+
 @Extension
-public class TepcoWidget extends Widget {
+public class KepcoWidget extends Widget {
 
     private Date lastUpdated;
 
     private List<UsageCondition> usages;
+
+    private int maxPowerOfDay;
 
     public Date getLastUpdated() {
         return lastUpdated;
@@ -49,27 +49,35 @@ public class TepcoWidget extends Widget {
 
         private Date date;
         private int today;
-        private int yesterday;
+        private int rate;
 
-        public UsageCondition(Date date, int today, int yesterday) {
+        public UsageCondition(Date date, int today, int rate) {
             this.date = date;
             this.today = today;
-            this.yesterday = yesterday;
+            this.rate = rate;
         }
 
-        public Date getDate() { return date; }
-        public int getToday() { return today; }
-        public int getYesterday() { return yesterday; }
+        public Date getDate() {
+            return date;
+        }
+
+        public int getToday() {
+            return today;
+        }
+
+        public int getRate() {
+            return rate;
+        }
     }
 
     @Extension
     public static class CsvDownloader extends PeriodicWork {
 
-        private static final String CSV_URL = "http://www.tepco.co.jp/forecast/html/images/juyo-j.csv";
+        private static final String CSV_URL = "http://www.kepco.co.jp/yamasou/juyo1_kansai.csv";
 
-        private static final Pattern HEADER_PATTERN = compile("(\\d{4}/\\d{1,2}/\\d{1,2} \\d{1,2}:\\d{1,2}) UPDATE");
+        private static final Pattern HEADER_PATTERN = compile("(\\d{4}/\\d{1,2}/\\d{1,2} \\d{1,2}:\\d{1,2}) UPDATE,,,");
 
-        private static final Pattern DATA_PATTERN = compile("(\\d{4}/\\d{1,2}/\\d{1,2}),(\\d{1,2}:\\d{1,2}),(\\d+),(\\d+)");
+        private static final Pattern DATA_PATTERN = compile("(\\d{4}/\\d{1,2}/\\d{1,2}),(\\d{1,2}:\\d{1,2}),(\\d+),(\\d+),(\\d+),(\\d+)");
 
         @Override
         public long getRecurrencePeriod() {
@@ -86,7 +94,9 @@ public class TepcoWidget extends Widget {
             boolean isFirst = true;
             DateFormat fmt = new SimpleDateFormat("yyyy/M/d H:m");
             Date lastUpdated = null;
+            Integer maxPowerOfDay = null;
             List<UsageCondition> usages = new ArrayList<UsageCondition>();
+
             for (String line : loadCsv().split("\r?\n")) {
                 if (isFirst) {
                     Matcher h = HEADER_PATTERN.matcher(line);
@@ -97,17 +107,24 @@ public class TepcoWidget extends Widget {
                 } else {
                     Matcher d = DATA_PATTERN.matcher(line);
                     if (d.matches()) {
+                        Date date = fmt.parse(String.format("%s %s", d.group(1), d.group(2)));
+                        Date start = fmt.parse(String.format("%s 9:00", d.group(1)));
+                        if (date.before(start)) {
+                            continue;
+                        }
+
+                        int actual = Integer.parseInt(d.group(3));
                         usages.add(new UsageCondition(
-                            fmt.parse(String.format("%s %s", d.group(1), d.group(2))),
-                            Integer.parseInt(d.group(3)),
-                            Integer.parseInt(d.group(4))));
+                                date,
+                                actual == 0 ? Integer.parseInt(d.group(4)) : actual,
+                                Integer.parseInt(d.group(6))));
                     }
                 }
             }
             if (lastUpdated != null) {
                 for (Widget w : Hudson.getInstance().getWidgets()) {
-                    if (w instanceof TepcoWidget) {
-                        TepcoWidget tw = (TepcoWidget) w;
+                    if (w instanceof KepcoWidget) {
+                        KepcoWidget tw = (KepcoWidget) w;
                         tw.setLastUpdated(lastUpdated);
                         tw.setUsages(usages);
                     }

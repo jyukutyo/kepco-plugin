@@ -1,0 +1,21 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+<l:pane width="3" title="関西電力 電気使用状況">
+<tr>
+  <th colspan="3"><i:formatDate pattern="M/dd HH:mm" value="${it.lastUpdated}"/> 更新</th>
+</tr>
+<tr>
+  <th class="pane">日時</th>
+  <th class="pane">当日実績または<br/>予測値(万kW)</th>
+  <th class="pane">使用率(%)</th>
+</tr>
+<j:forEach var="usage" items="${it.usages}">
+  <j:set var="row" value="${usage.date &lt; it.lastUpdated ? 'background-color: #CCCCCC;' : ''}" />
+  <j:set var="rate" value="${usage.rate ge 90 ? 'color: red; font-weight: bold;' : ''}" />
+  <tr style="${row}">
+    <td align="center" class="pane"><i:formatDate pattern="M/dd HH:mm" value="${usage.date}"/></td>
+    <td class="pane" align="right">${usage.today}</td>
+    <td class="pane" style="${rate}" align="right">${usage.rate}</td>
+  </tr>
+</j:forEach>
+</l:pane>
+</j:jelly>
