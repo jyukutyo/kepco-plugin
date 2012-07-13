@@ -2,9 +2,7 @@ package org.jenkinsci.plugins.kepco;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
-import java.net.Proxy;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -261,17 +259,8 @@ public class KepcoWidget extends Widget {
             InputStream is = null;
             try {
                 URL url = new URL(CSV_URL);
-
-                String proxyHost = System.getProperty("proxyHost");
-                if (proxyHost == null) {
-                    is = url.openStream();
-                    return IOUtils.toString(is, "Shift_JIS");
-                }
-
-                Proxy proxy = new Proxy(Proxy.Type.HTTP,
-                        new InetSocketAddress(proxyHost, Integer.parseInt(System.getProperty("proxyPort"))));
-
-                return IOUtils.toString(url.openConnection(proxy).getInputStream(), "Shift_JIS");
+                is = url.openStream();
+                return IOUtils.toString(is, "Shift_JIS");
 
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
