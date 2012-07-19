@@ -10,10 +10,12 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.model.Hudson;
 import hudson.model.PeriodicWork;
 import hudson.widgets.Widget;
@@ -24,6 +26,8 @@ import static java.util.regex.Pattern.compile;
 
 @Extension
 public class KepcoWidget extends Widget {
+
+    private static final Logger logger = Logger.getLogger(KepcoWidget.class.getName());
 
     private String current;
 
@@ -242,7 +246,6 @@ public class KepcoWidget extends Widget {
 
                 }
 
-
             }
             if (lastUpdated != null) {
                 for (Widget w : Hudson.getInstance().getWidgets()) {
@@ -259,9 +262,10 @@ public class KepcoWidget extends Widget {
             InputStream is = null;
             try {
                 URL url = new URL(CSV_URL);
-                is = url.openStream();
+//                is = url.openConnection(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("10.5.81.33",3128))).getInputStream();
+                is = ProxyConfiguration.open(url).getInputStream();
+//                is = url.openStream();
                 return IOUtils.toString(is, "Shift_JIS");
-
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             } catch (IOException e) {
@@ -272,3 +276,4 @@ public class KepcoWidget extends Widget {
         }
     }
 }
+
